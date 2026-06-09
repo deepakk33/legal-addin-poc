@@ -1,3 +1,4 @@
+import "dotenv/config"; // load server/.env before anything reads process.env
 import express from "express";
 import cors from "cors";
 import * as https from "https";
@@ -23,12 +24,19 @@ async function main() {
   https
     .createServer({ key: httpsOptions.key, cert: httpsOptions.cert }, app)
     .listen(PORT, () => {
+      const provider = (process.env.MODEL_PROVIDER ?? "ollama").toLowerCase();
+      const model =
+        provider === "anthropic" || provider === "claude"
+          ? process.env.ANTHROPIC_MODEL ?? "claude-opus-4-8"
+          : provider === "openai" || provider === "gpt"
+            ? process.env.OPENAI_MODEL ?? "gpt-4o"
+            : `${process.env.OLLAMA_MODEL ?? "llama3.1:8b"} @ ${process.env.OLLAMA_HOST ?? "http://localhost:11434"}`;
       // eslint-disable-next-line no-console
       console.log(`Legal add-in backend on https://localhost:${PORT}`);
       // eslint-disable-next-line no-console
-      console.log(`  provider:   ${process.env.MODEL_PROVIDER ?? "ollama"}`);
+      console.log(`  provider:   ${provider}`);
       // eslint-disable-next-line no-console
-      console.log(`  ollama:     ${process.env.OLLAMA_MODEL ?? "llama3.1:8b"} @ ${process.env.OLLAMA_HOST ?? "http://localhost:11434"}`);
+      console.log(`  model:      ${model}`);
       // eslint-disable-next-line no-console
       console.log(`  audit db:   ${dbPath()}`);
       // eslint-disable-next-line no-console

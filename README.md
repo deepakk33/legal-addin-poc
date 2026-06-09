@@ -67,8 +67,13 @@ npm install
 **Terminal 1 — backend** (model proxy + audit log):
 ```bash
 cd server
-npm start          # https://localhost:3001
+cp .env.example .env   # if you don't already have server/.env
+#   default backend is Claude (claude-sonnet-4-6) — paste ANTHROPIC_API_KEY into .env
+npm start              # https://localhost:3001  (auto-loads server/.env via dotenv)
 ```
+`server/.env` is gitignored — your key is never committed. To use a different backend,
+change `MODEL_PROVIDER` in `.env` (see **Switching models** below). If you use Ollama
+instead, do the `ollama pull` / `ollama serve` steps from Quick start.
 Config via env or `server/.env` (copy `server/.env.example`): `OLLAMA_MODEL` (default `llama3.1:8b`),
 `OLLAMA_HOST`, `MODEL_PROVIDER` (`ollama` default; `anthropic` hits the stub), `BACKEND_PORT` (3001),
 `ADDIN_ORIGIN` (`https://localhost:3000`), `OLLAMA_TIMEOUT_MS`, `AUDIT_DB_PATH`.
@@ -79,6 +84,40 @@ npm start          # webpack dev server on https://localhost:3000, sideloads int
 ```
 `npm start` auto-sideloads on Windows/Mac. If Word doesn't open the pane, sideload `manifest.xml`
 manually (Word → **Insert → Add-ins → Upload My Add-in**), or `npm stop` then `npm start` again.
+
+## Switching models — Ollama / Claude / OpenAI
+
+The backend is model-agnostic behind a `ModelProvider` seam. Pick the backend with
+the `MODEL_PROVIDER` env var; restart the backend after changing it. The client and
+the rest of the backend don't change.
+
+| `MODEL_PROVIDER` | Provider | Key (server-side) | Model env (default) |
+|---|---|---|---|
+| `ollama` (default) | local Ollama | none | `OLLAMA_MODEL` (`llama3.1:8b`) |
+| `anthropic` | Claude API | `ANTHROPIC_API_KEY` | `ANTHROPIC_MODEL` (`claude-opus-4-8`) |
+| `openai` | OpenAI API | `OPENAI_API_KEY` | `OPENAI_MODEL` (`gpt-4o`) |
+
+```bash
+# Claude
+cd server
+MODEL_PROVIDER=anthropic ANTHROPIC_API_KEY=sk-ant-... npm start
+# (optional) ANTHROPIC_MODEL=claude-sonnet-4-6 for a cheaper/faster model
+
+# OpenAI
+MODEL_PROVIDER=openai OPENAI_API_KEY=sk-... npm start
+
+# Ollama (default, local, no key)
+npm start
+```
+
+Keys are read **server-side only** (env / `server/.env`) — they never reach the
+add-in client bundle. The provider name + model version are recorded in every
+audit-log row, so the trail shows exactly which model produced each edit.
+
+> Notes: Claude (Opus 4.8) rejects `temperature`/`budget_tokens`, so the Anthropic
+> provider omits them and relies on the "return only the edited text" system-prompt
+> guardrail. The OpenAI provider sends `temperature: 0.2`. Both are non-streaming
+> (a clause is short); raise `ANTHROPIC_MAX_TOKENS` if you edit long passages.
 
 ## Use it end to end
 
@@ -134,5 +173,5 @@ webhooks, the standalone document app, multi-tenant isolation, the fidelity ladd
 `insertText` (OOXML / content controls / word-level diff), full-document passes & chunking,
 vector DB / clause library / playbook-compare, AppSource / admin-center distribution.
 
-Swapping the local model for Anthropic in prod is a single-file change behind `ModelProvider`
-(`server/providers/AnthropicProvider.ts` is a deliberate stub proving the seam).
+Switching the model backend (Ollama ↔ Claude ↔ OpenAI) is an env-var change behind the
+`ModelProvider` seam — see **Switching models** above.
