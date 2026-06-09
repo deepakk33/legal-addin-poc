@@ -4,8 +4,8 @@
   <Version>1.0.0.0</Version>
   <ProviderName>Contoso</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
-  <DisplayName DefaultValue="legal-addin-poc"/>
-  <Description DefaultValue="A template to get started."/>
+  <DisplayName DefaultValue="Legal Doc Editor"/>
+  <Description DefaultValue="AI redlining for legal documents in Word."/>
   <IconUrl DefaultValue="https://localhost:3000/assets/icon-32.png"/>
   <HighResolutionIconUrl DefaultValue="https://localhost:3000/assets/icon-64.png"/>
   <SupportUrl DefaultValue="https://www.contoso.com/help"/>
@@ -72,13 +72,13 @@
         <bt:Url id="Taskpane.Url" DefaultValue="https://localhost:3000/taskpane.html"/>
       </bt:Urls>
       <bt:ShortStrings>
-        <bt:String id="GetStarted.Title" DefaultValue="Get started with your sample add-in!"/>
-        <bt:String id="CommandsGroup.Label" DefaultValue="Commands Group"/>
-        <bt:String id="TaskpaneButton.Label" DefaultValue="Show Task Pane"/>
+        <bt:String id="GetStarted.Title" DefaultValue="Legal Doc Editor"/>
+        <bt:String id="CommandsGroup.Label" DefaultValue="Legal Doc Editor"/>
+        <bt:String id="TaskpaneButton.Label" DefaultValue="Open Editor"/>
       </bt:ShortStrings>
       <bt:LongStrings>
-        <bt:String id="GetStarted.Description" DefaultValue="Your sample add-in loaded successfully. Go to the HOME tab and click the 'Show Task Pane' button to get started."/>
-        <bt:String id="TaskpaneButton.Tooltip" DefaultValue="Click to Show a Task Pane"/>
+        <bt:String id="GetStarted.Description" DefaultValue="Legal Doc Editor loaded. Go to the HOME tab and click 'Open Editor' to start redlining."/>
+        <bt:String id="TaskpaneButton.Tooltip" DefaultValue="Open the Legal Doc Editor task pane"/>
       </bt:LongStrings>
     </Resources>
   </VersionOverrides>
