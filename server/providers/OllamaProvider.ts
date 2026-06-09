@@ -1,5 +1,5 @@
 import { ModelProvider, EditRequest } from "./ModelProvider";
-import { LEGAL_SYSTEM_PROMPT } from "../prompts/legal";
+import { buildPrompt, sanitizeModelOutput } from "../prompts/legal";
 
 const MODEL = process.env.OLLAMA_MODEL ?? "llama3.1:8b";
 const HOST = process.env.OLLAMA_HOST ?? "http://localhost:11434";
@@ -14,7 +14,8 @@ export class OllamaProvider implements ModelProvider {
     return MODEL;
   }
 
-  async edit({ text, instruction }: EditRequest): Promise<string> {
+  async edit({ text, instruction, mode = "edit" }: EditRequest): Promise<string> {
+    const { system, user } = buildPrompt(mode, text, instruction);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
@@ -28,14 +29,8 @@ export class OllamaProvider implements ModelProvider {
           // Lower temperature: legal edits should be conservative, not creative.
           options: { temperature: 0.2 },
           messages: [
-            { role: "system", content: LEGAL_SYSTEM_PROMPT },
-            {
-              role: "user",
-              content:
-                `Instruction: ${instruction}\n\n` +
-                `Text to edit:\n${text}\n\n` +
-                `Return ONLY the edited text, no commentary, no markdown.`,
-            },
+            { role: "system", content: system },
+            { role: "user", content: user },
           ],
         }),
       });
@@ -44,11 +39,11 @@ export class OllamaProvider implements ModelProvider {
         throw new Error(`Ollama ${res.status}: ${detail}`);
       }
       const data = (await res.json()) as { message?: { content?: string } };
-      const content = data.message?.content;
+      const content = sanitizeModelOutput(data.message?.content ?? "");
       if (!content) {
         throw new Error("Ollama returned no message content");
       }
-      return content.trim();
+      return content;
     } finally {
       clearTimeout(timer);
     }

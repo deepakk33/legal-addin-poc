@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { ModelProvider, EditRequest } from "./ModelProvider";
-import { LEGAL_SYSTEM_PROMPT } from "../prompts/legal";
+import { buildPrompt, sanitizeModelOutput } from "../prompts/legal";
 
 // OpenAI provider. Key is read from OPENAI_API_KEY (server-side only).
 const MODEL = process.env.OPENAI_MODEL ?? "gpt-4o";
@@ -24,23 +24,18 @@ export class OpenAIProvider implements ModelProvider {
     return MODEL;
   }
 
-  async edit({ text, instruction }: EditRequest): Promise<string> {
+  async edit({ text, instruction, mode = "edit" }: EditRequest): Promise<string> {
+    const { system, user } = buildPrompt(mode, text, instruction);
     const res = await this.client.chat.completions.create({
       model: MODEL,
       temperature: 0.2, // conservative: legal edits, not creative writing
       messages: [
-        { role: "system", content: LEGAL_SYSTEM_PROMPT },
-        {
-          role: "user",
-          content:
-            `Instruction: ${instruction}\n\n` +
-            `Text to edit:\n${text}\n\n` +
-            `Return ONLY the edited text, no commentary, no markdown.`,
-        },
+        { role: "system", content: system },
+        { role: "user", content: user },
       ],
     });
 
-    const out = res.choices[0]?.message?.content?.trim();
+    const out = sanitizeModelOutput(res.choices[0]?.message?.content ?? "");
     if (!out) {
       throw new Error("OpenAI returned no message content");
     }

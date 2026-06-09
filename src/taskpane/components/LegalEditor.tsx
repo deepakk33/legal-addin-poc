@@ -10,7 +10,7 @@ import {
   tokens,
   makeStyles,
 } from "@fluentui/react-components";
-import { editSelection, readSelection, EditResult } from "../word/editor";
+import { runInstruction, getDocState, readSelection, EditResult } from "../word/editor";
 
 /* global HTMLTextAreaElement */
 
@@ -35,6 +35,7 @@ const LegalEditor: React.FC = () => {
   const styles = useStyles();
   const [instruction, setInstruction] = useState<string>("Make this clause mutual.");
   const [selection, setSelection] = useState<string>("");
+  const [hasSelection, setHasSelection] = useState<boolean>(false);
   const [result, setResult] = useState<EditResult | null>(null);
   const [status, setStatus] = useState<string>("");
   const [error, setError] = useState<string>("");
@@ -44,7 +45,9 @@ const LegalEditor: React.FC = () => {
     setError("");
     try {
       const text = await readSelection();
-      setSelection(text.trim() || "(nothing selected)");
+      const trimmed = text.trim();
+      setHasSelection(trimmed.length > 0);
+      setSelection(trimmed || "(nothing selected — will draft new text)");
     } catch (e) {
       setError(String((e as Error).message || e));
     }
@@ -54,12 +57,19 @@ const LegalEditor: React.FC = () => {
     setError("");
     setResult(null);
     setBusy(true);
-    setStatus("Reading selection…");
+    setStatus("Working…");
     try {
-      const r = await editSelection(instruction, setStatus);
+      const r = await runInstruction(instruction, setStatus);
       setResult(r);
-      setSelection(r.original);
-      setStatus("Done — review the tracked change in the document.");
+      setHasSelection(r.mode === "edit");
+      setSelection(r.mode === "edit" ? r.original : "(drafted new text)");
+      if (!r.changed) {
+        setStatus("No change made — the model returned the text unchanged for this instruction.");
+      } else if (r.mode === "draft") {
+        setStatus("Drafted — review the tracked insertion in the document.");
+      } else {
+        setStatus("Done — review the tracked change in the document.");
+      }
     } catch (e) {
       setError(String((e as Error).message || e));
       setStatus("");
@@ -68,14 +78,23 @@ const LegalEditor: React.FC = () => {
     }
   };
 
+  // Decide the action label from the last-known selection state. Refreshed by
+  // "Read selection"; defaults to Draft until the user reads a selection.
+  React.useEffect(() => {
+    getDocState()
+      .then((s) => setHasSelection(s.hasSelection))
+      .catch(() => undefined);
+  }, []);
+
   return (
     <div className={styles.root}>
       <Text size={400} weight="semibold">
         Legal AI redline
       </Text>
       <Text className={styles.status}>
-        Select a clause in the document, type an instruction, then Edit. The change lands as a
-        tracked change you can accept or reject.
+        Select a clause and type an instruction to redline it, or select nothing and type an
+        instruction to draft new text. Either way the change lands as a tracked change you can
+        accept or reject.
       </Text>
 
       <div className={styles.row}>
@@ -101,7 +120,7 @@ const LegalEditor: React.FC = () => {
 
       <div className={styles.row}>
         <Button appearance="primary" onClick={onEdit} disabled={busy || !instruction.trim()}>
-          Edit selection
+          {hasSelection ? "Edit selection" : "Draft into document"}
         </Button>
         {busy && <Spinner size="tiny" />}
       </div>
@@ -109,10 +128,12 @@ const LegalEditor: React.FC = () => {
       {status && <Text className={styles.status}>{status}</Text>}
       {error && <Text className={styles.error}>{error}</Text>}
 
-      {result && (
+      {result && result.changed && (
         <div className={styles.preview}>
           <Card className={styles.card}>
-            <div className={styles.label}>AI edit (written to document)</div>
+            <div className={styles.label}>
+              {result.mode === "draft" ? "Drafted (inserted as tracked change)" : "AI edit (written to document)"}
+            </div>
             <Text className={styles.mono}>{result.edited}</Text>
           </Card>
         </div>

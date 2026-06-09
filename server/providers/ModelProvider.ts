@@ -5,6 +5,9 @@
 export interface EditRequest {
   text: string;
   instruction: string;
+  // "edit" (default): revise the supplied text. "draft": author new text from
+  // the instruction alone (text may be empty).
+  mode?: "edit" | "draft";
 }
 
 export interface ModelProvider {

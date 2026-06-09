@@ -9,13 +9,16 @@ interface EditBody {
   text?: string;
   instruction?: string;
   docName?: string;
+  mode?: "edit" | "draft";
 }
 
-// POST /api/edit  { text, instruction, docName? } -> { text: edited }
+// POST /api/edit  { text, instruction, docName?, mode? } -> { text: edited }
 router.post("/edit", async (req: Request, res: Response) => {
-  const { text, instruction, docName } = (req.body ?? {}) as EditBody;
+  const { text, instruction, docName, mode } = (req.body ?? {}) as EditBody;
+  const editMode = mode === "draft" ? "draft" : "edit";
 
-  if (!text || !text.trim()) {
+  // Edit mode needs source text; draft mode authors from the instruction alone.
+  if (editMode === "edit" && (!text || !text.trim())) {
     return res.status(400).json({ error: "Missing 'text' to edit." });
   }
   if (!instruction || !instruction.trim()) {
@@ -23,7 +26,7 @@ router.post("/edit", async (req: Request, res: Response) => {
   }
 
   try {
-    const edited = await provider.edit({ text, instruction });
+    const edited = await provider.edit({ text: text ?? "", instruction, mode: editMode });
 
     // Append-only audit row (status 'pending' until accept/reject is wired).
     recordEdit({
@@ -31,7 +34,7 @@ router.post("/edit", async (req: Request, res: Response) => {
       instruction,
       modelName: provider.name(),
       modelVersion: provider.version(),
-      originalText: text,
+      originalText: text ?? "",
       editedText: edited,
     });
 
