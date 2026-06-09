@@ -4,10 +4,11 @@ A Microsoft Word task-pane add-in that redlines selected legal text with an AI a
 edit as a **native tracked change** the lawyer accepts or rejects. Our own product (not Copilot),
 bring-your-own-model behind an adapter. This is the POC that proves the one core loop:
 
-> select text in Word → ask a local model to edit it → land it as a tracked change → audit-log it
+> select text in Word → ask an AI to edit it → land it as a tracked change → audit-log it
 
-Full brief in [`docs/legal-addin-poc-spec.md`](docs/legal-addin-poc-spec.md); product/strategy
-context in [`docs/legal-word-addin-context-handoff.md`](docs/legal-word-addin-context-handoff.md).
+The model backend is swappable — **OpenAI (default), Claude, or local Ollama** — behind one
+`ModelProvider` seam. Full brief in [`docs/legal-addin-poc-spec.md`](docs/legal-addin-poc-spec.md);
+product/strategy context in [`docs/legal-word-addin-context-handoff.md`](docs/legal-word-addin-context-handoff.md).
 
 ## Layout
 
@@ -19,9 +20,9 @@ legal-addin-poc/
 │   ├── components/LegalEditor.tsx # instruction box, Read selection, Edit button, preview
 │   └── word/editor.ts            # all Word.run logic: getSelection → trackAll → insertText replace
 ├── server/
-│   ├── index.ts                  # Express app over HTTPS (reuses Office dev cert)
+│   ├── index.ts                  # Express app over HTTPS (reuses Office dev cert), loads .env
 │   ├── routes/edit.ts            # POST /api/edit
-│   ├── providers/                # ModelProvider; OllamaProvider (live), AnthropicProvider (stub)
+│   ├── providers/                # ModelProvider seam: OpenAIProvider, AnthropicProvider, OllamaProvider
 │   ├── prompts/legal.ts          # legal system prompt + guardrails
 │   └── db/                       # SQLite append-only audit log (schema.sql, audit.ts)
 └── docs/                         # the two canonical spec docs
@@ -31,13 +32,13 @@ legal-addin-poc/
 
 | What | Why | Notes |
 |---|---|---|
-| **Node.js 22 LTS** | `generator-office` + native `better-sqlite3` reject non-LTS node | Use nvm/fnm/Homebrew/installer. Node 25 is **rejected** — see Troubleshooting. |
+| **Node.js 22 LTS** | build tooling + native `better-sqlite3` reject non-LTS node | nvm/fnm/Homebrew/installer. Node 25 is **rejected** — see Troubleshooting. |
 | **Microsoft Word** (desktop) | the add-in sideloads into Word | Windows or Mac; web target untested. |
-| **Ollama** | runs the model locally, offline, no API key | https://ollama.com |
-| **gh / git** (optional) | only to clone | — |
+| **A model API key** | the AI that does the editing | **OpenAI** key by default. Or a Claude key. Or **Ollama** (local, no key) — see Switching models. |
+| **git** | to clone | repo is public. |
 
-> Everything runs **locally** — no cloud, no auth, no API key. The model is local (Ollama); the
-> open `.docx` in Word is the source of truth.
+> Keys are read **server-side only** — they never reach the add-in client bundle. The open `.docx`
+> in Word is the source of truth (this POC has no cloud file sync).
 
 ## Quick start (fresh machine)
 
@@ -50,33 +51,30 @@ cd legal-addin-poc
 nvm install 22 && nvm use 22
 node -v        # must be v22.x
 
-# 3. Pull the model (general INSTRUCT model — not a code model) and start Ollama
-ollama pull llama3.1:8b
-ollama serve   # leave running (skip if already a service)
-
-# 4. Trust the local dev HTTPS certificate (one-time, interactive — installs a local CA)
+# 3. Trust the local dev HTTPS certificate (one-time, interactive — installs a local CA)
 npx office-addin-dev-certs install
 
-# 5. Install deps (root = add-in, server = backend)
+# 4. Install deps (root = add-in, server = backend)
 npm install
 ( cd server && npm install )
+
+# 5. Configure the backend key (default backend is OpenAI)
+cd server
+cp .env.example .env
+#    edit .env → paste OPENAI_API_KEY=sk-...
+cd ..
 ```
+
+> Using **Claude** or **Ollama** instead of OpenAI? See **Switching models** below before step 5.
 
 ## Run (two terminals, both on Node 22)
 
 **Terminal 1 — backend** (model proxy + audit log):
 ```bash
 cd server
-cp .env.example .env   # if you don't already have server/.env
-#   default backend is Claude (claude-sonnet-4-6) — paste ANTHROPIC_API_KEY into .env
-npm start              # https://localhost:3001  (auto-loads server/.env via dotenv)
+npm start          # https://localhost:3001  (auto-loads server/.env via dotenv)
 ```
-`server/.env` is gitignored — your key is never committed. To use a different backend,
-change `MODEL_PROVIDER` in `.env` (see **Switching models** below). If you use Ollama
-instead, do the `ollama pull` / `ollama serve` steps from Quick start.
-Config via env or `server/.env` (copy `server/.env.example`): `OLLAMA_MODEL` (default `llama3.1:8b`),
-`OLLAMA_HOST`, `MODEL_PROVIDER` (`ollama` default; `anthropic` hits the stub), `BACKEND_PORT` (3001),
-`ADDIN_ORIGIN` (`https://localhost:3000`), `OLLAMA_TIMEOUT_MS`, `AUDIT_DB_PATH`.
+`server/.env` is gitignored — your key is never committed.
 
 **Terminal 2 — add-in** (task pane + dev server + sideload), from the repo root:
 ```bash
@@ -85,39 +83,40 @@ npm start          # webpack dev server on https://localhost:3000, sideloads int
 `npm start` auto-sideloads on Windows/Mac. If Word doesn't open the pane, sideload `manifest.xml`
 manually (Word → **Insert → Add-ins → Upload My Add-in**), or `npm stop` then `npm start` again.
 
-## Switching models — Ollama / Claude / OpenAI
+## Switching models — OpenAI / Claude / Ollama
 
-The backend is model-agnostic behind a `ModelProvider` seam. Pick the backend with
-the `MODEL_PROVIDER` env var; restart the backend after changing it. The client and
-the rest of the backend don't change.
+The backend is model-agnostic behind a `ModelProvider` seam. Set `MODEL_PROVIDER` in `server/.env`
+(or as an env var) and restart the backend. Nothing else changes.
 
 | `MODEL_PROVIDER` | Provider | Key (server-side) | Model env (default) |
 |---|---|---|---|
-| `ollama` (default) | local Ollama | none | `OLLAMA_MODEL` (`llama3.1:8b`) |
-| `anthropic` | Claude API | `ANTHROPIC_API_KEY` | `ANTHROPIC_MODEL` (`claude-opus-4-8`) |
-| `openai` | OpenAI API | `OPENAI_API_KEY` | `OPENAI_MODEL` (`gpt-4o`) |
+| `openai` (default) | OpenAI API | `OPENAI_API_KEY` | `OPENAI_MODEL` (`gpt-4o`) |
+| `anthropic` | Claude API | `ANTHROPIC_API_KEY` | `ANTHROPIC_MODEL` (`claude-sonnet-4-6`) |
+| `ollama` | local Ollama | none | `OLLAMA_MODEL` (`llama3.1:8b`) |
 
+Set it in `server/.env`:
 ```bash
+# OpenAI (default)
+MODEL_PROVIDER=openai
+OPENAI_API_KEY=sk-...
+
 # Claude
-cd server
-MODEL_PROVIDER=anthropic ANTHROPIC_API_KEY=sk-ant-... npm start
-# (optional) ANTHROPIC_MODEL=claude-sonnet-4-6 for a cheaper/faster model
+MODEL_PROVIDER=anthropic
+ANTHROPIC_API_KEY=sk-ant-...
+ANTHROPIC_MODEL=claude-sonnet-4-6
 
-# OpenAI
-MODEL_PROVIDER=openai OPENAI_API_KEY=sk-... npm start
-
-# Ollama (default, local, no key)
-npm start
+# Ollama (local, no key) — first: ollama pull llama3.1:8b && ollama serve
+MODEL_PROVIDER=ollama
+OLLAMA_MODEL=llama3.1:8b
 ```
 
-Keys are read **server-side only** (env / `server/.env`) — they never reach the
-add-in client bundle. The provider name + model version are recorded in every
-audit-log row, so the trail shows exactly which model produced each edit.
+The provider name + model version are recorded in every audit-log row, so the trail shows
+exactly which model produced each edit.
 
-> Notes: Claude (Opus 4.8) rejects `temperature`/`budget_tokens`, so the Anthropic
-> provider omits them and relies on the "return only the edited text" system-prompt
-> guardrail. The OpenAI provider sends `temperature: 0.2`. Both are non-streaming
-> (a clause is short); raise `ANTHROPIC_MAX_TOKENS` if you edit long passages.
+> Notes: use a general **instruct** model, not a code model (Ollama: `llama3.1:8b`, not `*-coder`).
+> Claude Opus 4.x rejects `temperature`/`budget_tokens`, so the Anthropic provider omits them and
+> relies on the "return only the edited text" system-prompt guardrail; the OpenAI provider sends
+> `temperature: 0.2`. All non-streaming (a clause is short); raise `ANTHROPIC_MAX_TOKENS` for long passages.
 
 ## Use it end to end
 
@@ -125,30 +124,14 @@ audit-log row, so the trail shows exactly which model produced each edit.
 2. **Select a clause** in the document.
 3. (Optional) click **Read selection** to confirm the pane sees your text.
 4. Type an **instruction** — e.g. *"make this mutual"*, *"tighten this"*, *"redline against plain-English standard"*.
-5. Click **Edit selection**. The backend calls the local model; the edited text is written back into
-   the same range **as a tracked change** (redline).
+5. Click **Edit selection**. The backend calls the configured model; the edited text is written
+   back into the same range **as a tracked change** (redline).
 6. Resolve it with Word's normal **Review → Accept / Reject**.
 7. Every edit is recorded in the append-only audit log (`server/db/audit.db`).
 
-> First model call after `ollama serve` is slow (cold load) — backend timeout is generous
-> (`OLLAMA_TIMEOUT_MS`, default 120s). Not a hang.
-
-## Troubleshooting
-
-- **`generator-office`/build complains about Node version** → you're on non-LTS node (e.g. 25).
-  Switch to Node 22 (`nvm use 22`).
-- **Backend crashes loading `better-sqlite3`** (ABI / `NODE_MODULE_VERSION` mismatch) → deps were
-  installed under a different node. Re-run `npm install` in `server/` under Node 22, or
-  `npm rebuild better-sqlite3`.
-- **Add-in can't reach the backend / cert errors** → run `npx office-addin-dev-certs install` and
-  restart both. The backend reuses the same Office dev cert as the add-in.
-- **Model output is weak / code-like** → make sure `OLLAMA_MODEL` is a general **instruct** model
-  (`llama3.1:8b`, `qwen2.5:14b-instruct`), not a `*-coder` model. Note `llama3.1:8b-instruct` is
-  NOT a real Ollama tag — `llama3.1:8b` is already instruct-tuned.
-
 ## Verify without Word
 
-Backend health + edit, with the dev cert trusted:
+After the dev cert is trusted and a key is set:
 ```bash
 curl -k https://localhost:3001/health
 curl -k https://localhost:3001/api/edit \
@@ -160,18 +143,25 @@ Inspect the audit log:
 sqlite3 server/db/audit.db 'select id, created_at, model_name, model_version, status, instruction from edit_log;'
 ```
 
-> First model call after `ollama serve` is slow (cold load) — the backend timeout is generous
-> (`OLLAMA_TIMEOUT_MS`, default 120s). Not a hang.
+## Troubleshooting
+
+- **Build complains about Node version** → you're on non-LTS node (e.g. 25). Switch to Node 22 (`nvm use 22`).
+- **Backend crashes loading `better-sqlite3`** (ABI / `NODE_MODULE_VERSION` mismatch) → deps were
+  installed under a different node. Re-run `npm install` in `server/` under Node 22, or `npm rebuild better-sqlite3`.
+- **Add-in can't reach the backend / cert errors** → run `npx office-addin-dev-certs install` and
+  restart both. The backend reuses the same Office dev cert as the add-in.
+- **`... API key is not set`** → the selected `MODEL_PROVIDER` has no key in `server/.env`. Add the matching
+  key (`OPENAI_API_KEY` / `ANTHROPIC_API_KEY`), or switch to `MODEL_PROVIDER=ollama` (no key).
+- **Ollama: weak / code-like output** → use a general **instruct** model (`llama3.1:8b`), not a `*-coder`
+  model. `llama3.1:8b-instruct` is NOT a real Ollama tag — `llama3.1:8b` is already instruct-tuned.
+  First call after `ollama serve` is slow (cold load), not a hang (`OLLAMA_TIMEOUT_MS`, default 120s).
 
 ## Scope (POC)
 
 **In:** the one loop above — selection-only edits, tracked-change insert, append-only audit log,
-legal prompt with anti-hallucination guardrails, model-agnostic provider seam.
+legal prompt with anti-hallucination guardrails, model-agnostic provider seam (OpenAI / Claude / Ollama).
 
 **Out (prod, deliberately not built):** Entra SSO/On-Behalf-Of, Microsoft Graph sync/versions/
 webhooks, the standalone document app, multi-tenant isolation, the fidelity ladder beyond
 `insertText` (OOXML / content controls / word-level diff), full-document passes & chunking,
 vector DB / clause library / playbook-compare, AppSource / admin-center distribution.
-
-Switching the model backend (Ollama ↔ Claude ↔ OpenAI) is an env-var change behind the
-`ModelProvider` seam — see **Switching models** above.
