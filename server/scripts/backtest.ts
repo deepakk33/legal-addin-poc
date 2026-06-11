@@ -16,7 +16,6 @@ import { ReferenceContext } from "../providers/ModelProvider";
 interface Case {
   name: string;
   referenceFile?: string; // path relative to fixtures/, optional
-  referenceMode: ReferenceContext["mode"];
   instruction: string;
   selectionText?: string; // present => edit mode; absent => draft mode
   notes?: string;
@@ -44,7 +43,7 @@ async function main() {
   for (const c of cases) {
     // eslint-disable-next-line no-console
     console.log(`Running: ${c.name}`);
-    lines.push(`## ${c.name}`, ``, `- mode: ${c.referenceMode}`, `- instruction: ${c.instruction}`);
+    lines.push(`## ${c.name}`, ``, `- instruction: ${c.instruction}`);
     if (c.notes) lines.push(`- notes: ${c.notes}`);
 
     let reference: ReferenceContext | undefined;
@@ -52,8 +51,8 @@ async function main() {
       const buf = fs.readFileSync(path.join(FIXTURES_DIR, c.referenceFile));
       const { text } = await extractText(buf, c.referenceFile);
       const artifact = await buildArtifact(provider, text);
-      const projection = projectArtifact(artifact, c.referenceMode);
-      reference = { mode: c.referenceMode, projection };
+      const projection = projectArtifact(artifact);
+      reference = { projection };
       lines.push(``, `### Projection`, "```", projection, "```");
     }
 

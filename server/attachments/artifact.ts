@@ -1,4 +1,4 @@
-import { ModelProvider, ReferenceContext } from "../providers/ModelProvider";
+import { ModelProvider } from "../providers/ModelProvider";
 import {
   DISTILL_SYSTEM_PROMPT,
   CONDENSE_SYSTEM_PROMPT,
@@ -68,32 +68,22 @@ function asStringArray(v: any): string[] {
   return Array.isArray(v) ? v.filter((x) => typeof x === "string") : [];
 }
 
-// Project an artifact into the reference text injected at edit time, per the
-// chosen mode. This is the "Prompt + mode -> Assemble context" step.
-export function projectArtifact(artifact: Artifact, mode: ReferenceContext["mode"]): string {
-  const skeleton = () =>
-    [
-      artifact.headings.length ? `Headings:\n- ${artifact.headings.join("\n- ")}` : "",
-      artifact.clauseOrder.length ? `Clause order:\n- ${artifact.clauseOrder.join("\n- ")}` : "",
-      artifact.numberingScheme ? `Numbering scheme: ${artifact.numberingScheme}` : "",
-      artifact.formattingConventions
-        ? `Formatting conventions: ${artifact.formattingConventions}`
-        : "",
-    ]
-      .filter(Boolean)
-      .join("\n\n");
-
-  switch (mode) {
-    case "format":
-      return skeleton();
-    case "inspiration":
-      return artifact.toneSummary || skeleton();
-    case "exact": {
-      const slots = artifact.slots.length
-        ? "Data slots to fill:\n" +
-          artifact.slots.map((s) => `- ${s.label} (e.g. ${s.exampleValue})`).join("\n")
-        : "Data slots: none identified.";
-      return `${skeleton()}\n\n${slots}`;
-    }
-  }
+// Project an artifact into the reference text injected at edit time. One full
+// projection (structure + tone + data slots); the user's instruction, steered by
+// REFERENCE_ADDENDUM, decides how the model actually uses it.
+export function projectArtifact(artifact: Artifact): string {
+  const parts = [
+    artifact.headings.length ? `Headings:\n- ${artifact.headings.join("\n- ")}` : "",
+    artifact.clauseOrder.length ? `Clause order:\n- ${artifact.clauseOrder.join("\n- ")}` : "",
+    artifact.numberingScheme ? `Numbering scheme: ${artifact.numberingScheme}` : "",
+    artifact.formattingConventions
+      ? `Formatting conventions: ${artifact.formattingConventions}`
+      : "",
+    artifact.toneSummary ? `Tone/style: ${artifact.toneSummary}` : "",
+    artifact.slots.length
+      ? "Data slots:\n" +
+        artifact.slots.map((s) => `- ${s.label} (e.g. ${s.exampleValue})`).join("\n")
+      : "",
+  ];
+  return parts.filter(Boolean).join("\n\n");
 }

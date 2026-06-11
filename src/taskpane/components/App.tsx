@@ -9,7 +9,10 @@ interface AppProps {
 
 const useStyles = makeStyles({
   root: {
-    minHeight: "100vh",
+    height: "100vh",
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
   },
 });
 
@@ -17,7 +20,7 @@ const App: React.FC<AppProps> = (props: AppProps) => {
   const styles = useStyles();
   return (
     <div className={styles.root}>
-      <Header logo="assets/logo-filled.png" title={props.title} message="Silks AI" />
+      <Header logo="assets/silks-logo.svg" title={props.title} />
       <LegalEditor />
     </div>
   );

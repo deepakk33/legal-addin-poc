@@ -2,12 +2,13 @@
 // it always goes through the backend, which goes through a ModelProvider.
 // Swapping Ollama -> Anthropic in prod is a single-file change behind this seam.
 
-// How an uploaded reference document should steer the edit/draft. Built from a
-// grounding artifact at request time (see attachments/artifact.ts).
+// Grounding from an uploaded reference document, built at request time from its
+// distilled artifact (see attachments/artifact.ts). How it's used (mirror the
+// format, take inspiration, reframe with the user's data, ...) is driven by the
+// user's own instruction, not a fixed mode — the system prompt interprets it.
 export interface ReferenceContext {
-  mode: "format" | "inspiration" | "exact";
-  // Already-projected reference text (skeleton / tone summary / skeleton+slots),
-  // ready to drop into the prompt.
+  // Projected reference text (structure + tone + data slots), ready to drop
+  // into the prompt.
   projection: string;
 }
 

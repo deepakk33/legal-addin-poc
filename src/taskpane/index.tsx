@@ -11,14 +11,23 @@ const title = "Silks AI";
 const rootElement: HTMLElement | null = document.getElementById("container");
 const root = rootElement ? createRoot(rootElement) : undefined;
 
-/* Render application after Office initializes */
-Office.onReady(() => {
+/* Render application after Office initializes.
+   Browser-preview fallback: outside a Word host, Office.onReady may never fire,
+   so race it against a short timeout and render anyway. editor.ts mocks the
+   document layer when not in Word, so the UI is fully explorable in a browser. */
+let rendered = false;
+const renderApp = () => {
+  if (rendered) return;
+  rendered = true;
   root?.render(
     <FluentProvider theme={silksTheme}>
       <App title={title} />
     </FluentProvider>
   );
-});
+};
+
+Office.onReady(renderApp);
+setTimeout(renderApp, 1500); // browser-preview fallback
 
 if ((module as any).hot) {
   (module as any).hot.accept("./components/App", () => {

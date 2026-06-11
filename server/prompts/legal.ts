@@ -15,7 +15,7 @@ export function buildPrompt(
 ) {
   const system =
     (mode === "draft" ? LEGAL_DRAFT_SYSTEM_PROMPT : LEGAL_SYSTEM_PROMPT) +
-    (reference ? "\n\n" + referenceAddendum(reference.mode) : "");
+    (reference ? "\n\n" + REFERENCE_ADDENDUM : "");
 
   const refBlock = reference
     ? `=== REFERENCE (uploaded) ===\n${reference.projection}\n=== END REFERENCE ===\n\n`
@@ -40,26 +40,25 @@ export function buildPrompt(
   };
 }
 
-// Mode-specific guidance appended to the system prompt when a reference is in
-// play. Keeps the model focused on the uploaded doc the way the user intended,
-// without letting it copy facts it shouldn't.
-export function referenceAddendum(mode: ReferenceContext["mode"]): string {
-  switch (mode) {
-    case "format":
-      return `A REFERENCE block is provided. Mirror its STRUCTURE: headings, clause ordering,
-numbering scheme, and formatting conventions. Do NOT reuse the reference's specific
-facts (parties, dates, figures); draw all content from the user's instruction.`;
-    case "inspiration":
-      return `A REFERENCE block is provided as a loose stylistic guide. Use its tone and
-approach for inspiration only; adapt freely. Stay within the user's instruction and
-do not copy the reference's specific facts.`;
-    case "exact":
-      return `A REFERENCE block is provided with a structure and labeled data slots. Follow the
-structure closely and fill the slots with the data in the user's instruction. Use
-bracketed placeholders (e.g. [PARTY A]) for any slot the user did not supply. Do not
-invent facts beyond the instruction.`;
-  }
-}
+// Guidance appended to the system prompt when the user attached a reference
+// document. The user's own instruction decides HOW to use it — mirror its
+// format, take stylistic inspiration, reframe it with their data, pull a
+// specific clause, etc. This addendum tells the model to follow that intent
+// while staying anti-hallucination. Tune this wording from backtest results.
+export const REFERENCE_ADDENDUM = `The user attached a reference document, distilled into the REFERENCE block below
+(its structure, drafting style, and the kinds of data it contains). Use it as the
+user's instruction directs:
+- If they ask to follow/copy/mirror its FORMAT or STRUCTURE, reproduce its headings,
+  clause ordering, numbering scheme, and drafting conventions — but do NOT reuse the
+  reference's own specific facts (parties, dates, figures); take content from the
+  user's instruction.
+- If they ask for INSPIRATION or to match its style/tone, use it as a loose guide and
+  adapt freely.
+- If they ask to reframe it with THEIR data, follow its structure and fill in the data
+  the user provides, using bracketed placeholders (e.g. [PARTY A]) for anything they
+  did not supply.
+Never invent facts beyond the user's instruction and the reference. If the instruction
+doesn't say how to use the reference, mirror its format by default.`;
 
 // Models sometimes wrap output in ```fences``` or "quotes" despite the prompt.
 // Strip a single enclosing layer so the redline lands as clean text.
