@@ -17,7 +17,7 @@ const App: React.FC<AppProps> = (props: AppProps) => {
   const styles = useStyles();
   return (
     <div className={styles.root}>
-      <Header logo="assets/logo-filled.png" title={props.title} message="Legal AI redline" />
+      <Header logo="assets/logo-filled.png" title={props.title} message="Silks AI" />
       <LegalEditor />
     </div>
   );

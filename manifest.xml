@@ -4,8 +4,8 @@
   <Version>1.0.0.0</Version>
   <ProviderName>Contoso</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
-  <DisplayName DefaultValue="Legal Doc Editor"/>
-  <Description DefaultValue="AI redlining for legal documents in Word."/>
+  <DisplayName DefaultValue="Silks AI"/>
+  <Description DefaultValue="Silks AI — AI redlining and drafting for legal documents in Word."/>
   <IconUrl DefaultValue="https://localhost:3000/assets/icon-32.png"/>
   <HighResolutionIconUrl DefaultValue="https://localhost:3000/assets/icon-64.png"/>
   <SupportUrl DefaultValue="https://www.contoso.com/help"/>
@@ -72,13 +72,13 @@
         <bt:Url id="Taskpane.Url" DefaultValue="https://localhost:3000/taskpane.html"/>
       </bt:Urls>
       <bt:ShortStrings>
-        <bt:String id="GetStarted.Title" DefaultValue="Legal Doc Editor"/>
-        <bt:String id="CommandsGroup.Label" DefaultValue="Legal Doc Editor"/>
+        <bt:String id="GetStarted.Title" DefaultValue="Silks AI"/>
+        <bt:String id="CommandsGroup.Label" DefaultValue="Silks AI"/>
         <bt:String id="TaskpaneButton.Label" DefaultValue="Open Editor"/>
       </bt:ShortStrings>
       <bt:LongStrings>
-        <bt:String id="GetStarted.Description" DefaultValue="Legal Doc Editor loaded. Go to the HOME tab and click 'Open Editor' to start redlining."/>
-        <bt:String id="TaskpaneButton.Tooltip" DefaultValue="Open the Legal Doc Editor task pane"/>
+        <bt:String id="GetStarted.Description" DefaultValue="Silks AI loaded. Go to the HOME tab and click 'Open Editor' to start redlining."/>
+        <bt:String id="TaskpaneButton.Tooltip" DefaultValue="Open the Silks AI task pane"/>
       </bt:LongStrings>
     </Resources>
   </VersionOverrides>

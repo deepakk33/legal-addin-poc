@@ -24,11 +24,17 @@ export class OpenAIProvider implements ModelProvider {
     return MODEL;
   }
 
-  async edit({ text, instruction, mode = "edit" }: EditRequest): Promise<string> {
-    const { system, user } = buildPrompt(mode, text, instruction);
+  async edit({ text, instruction, mode = "edit", reference }: EditRequest): Promise<string> {
+    const { system, user } = buildPrompt(mode, text, instruction, reference);
+    return this.complete(system, user, 0.2);
+  }
+
+  // Generic completion (also used for ingestion/distillation). Default temp is
+  // low so distillation is deterministic; edit() passes 0.2.
+  async complete(system: string, user: string, temperature = 0.1): Promise<string> {
     const res = await this.client.chat.completions.create({
       model: MODEL,
-      temperature: 0.2, // conservative: legal edits, not creative writing
+      temperature,
       messages: [
         { role: "system", content: system },
         { role: "user", content: user },

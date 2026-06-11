@@ -1,0 +1,24 @@
+[
+  {
+    "name": "Format: draft new NDA in the sample's structure",
+    "referenceFile": "sample-nda.txt",
+    "referenceMode": "format",
+    "instruction": "Draft a mutual NDA between [PARTY A] and [PARTY B] following this structure.",
+    "notes": "Should mirror headings/numbering, NOT reuse Acme/Globex/Delaware facts."
+  },
+  {
+    "name": "Exact: reframe with the user's data",
+    "referenceFile": "sample-nda.txt",
+    "referenceMode": "exact",
+    "instruction": "Draft this NDA for Initech Inc. and Hooli Inc., effective March 1, 2026, governed by California law, with a 3-year term.",
+    "notes": "Should follow the structure and fill the slots with the supplied data."
+  },
+  {
+    "name": "Inspiration: tone-only guidance on an edit",
+    "referenceFile": "sample-nda.txt",
+    "referenceMode": "inspiration",
+    "instruction": "Make this clause mutual.",
+    "selectionText": "The Receiving Party shall not disclose Confidential Information to any third party.",
+    "notes": "Edit mode; reference used for tone only."
+  }
+]

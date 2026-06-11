@@ -4,3 +4,6 @@ audit.db
 audit.db-shm
 audit.db-wal
 *.log
+
+# generated backtest output
+scripts/backtest-results.md

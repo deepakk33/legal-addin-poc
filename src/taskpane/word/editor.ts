@@ -1,4 +1,4 @@
-/* global Word Office fetch Response */
+/* global Word Office fetch Response FormData File AbortSignal */
 
 // All in-document interaction lives here (the Word.run logic).
 // POC core loop: read the user's selection -> backend edits it -> land the edit
@@ -7,8 +7,16 @@
 // a tracked change), so an empty document is usable too.
 
 const BACKEND_URL = "https://localhost:3001/api/edit";
+const ATTACH_URL = "https://localhost:3001/api/attachments";
 
 export type EditMode = "edit" | "draft";
+export type ReferenceMode = "format" | "inspiration" | "exact";
+
+// Reference grounding from uploaded attachments, threaded into every edit/draft.
+export interface ReferenceInput {
+  attachmentIds: string[];
+  referenceMode: ReferenceMode;
+}
 
 export interface EditResult {
   mode: EditMode;
@@ -58,6 +66,8 @@ async function callBackend(body: {
   instruction: string;
   mode: EditMode;
   docName: string;
+  attachmentIds?: string[];
+  referenceMode?: ReferenceMode;
 }): Promise<string> {
   let res: Response;
   try {
@@ -105,7 +115,11 @@ function reclothe(original: string, editedCore: string): string {
 }
 
 // EDIT mode: revise the current selection in place as a tracked change.
-async function runEdit(instruction: string, onStatus?: (m: string) => void): Promise<EditResult> {
+async function runEdit(
+  instruction: string,
+  onStatus?: (m: string) => void,
+  reference?: ReferenceInput
+): Promise<EditResult> {
   return Word.run(async (context) => {
     const range = context.document.getSelection();
     range.load("text");
@@ -122,6 +136,8 @@ async function runEdit(instruction: string, onStatus?: (m: string) => void): Pro
       instruction,
       mode: "edit",
       docName: docName(),
+      attachmentIds: reference?.attachmentIds,
+      referenceMode: reference?.referenceMode,
     });
 
     // No-op guard: if the model returned the same text (e.g. the instruction
@@ -142,7 +158,11 @@ async function runEdit(instruction: string, onStatus?: (m: string) => void): Pro
 
 // DRAFT mode: author new text from the instruction and insert it as a tracked
 // change. Used when nothing is selected (typically an empty document).
-async function runDraft(instruction: string, onStatus?: (m: string) => void): Promise<EditResult> {
+async function runDraft(
+  instruction: string,
+  onStatus?: (m: string) => void,
+  reference?: ReferenceInput
+): Promise<EditResult> {
   return Word.run(async (context) => {
     onStatus?.("Drafting…");
     const draft = await callBackend({
@@ -150,6 +170,8 @@ async function runDraft(instruction: string, onStatus?: (m: string) => void): Pr
       instruction,
       mode: "draft",
       docName: docName(),
+      attachmentIds: reference?.attachmentIds,
+      referenceMode: reference?.referenceMode,
     });
 
     onStatus?.("Inserting as tracked change…");
@@ -169,14 +191,17 @@ async function runDraft(instruction: string, onStatus?: (m: string) => void): Pr
 // so the user can't fire the wrong mode.
 export async function runInstruction(
   instruction: string,
-  onStatus?: (m: string) => void
+  onStatus?: (m: string) => void,
+  reference?: ReferenceInput
 ): Promise<EditResult> {
   if (!instruction.trim()) {
     throw new Error("Type an instruction first.");
   }
   onStatus?.("Reading document…");
   const state = await getDocState();
-  return state.hasSelection ? runEdit(instruction, onStatus) : runDraft(instruction, onStatus);
+  return state.hasSelection
+    ? runEdit(instruction, onStatus, reference)
+    : runDraft(instruction, onStatus, reference);
 }
 
 // Collapse whitespace for no-op comparison so trivial spacing differences from
@@ -193,5 +218,71 @@ function docName(): string {
     return url.split(/[\\/]/).pop() || "untitled";
   } catch {
     return "untitled";
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Attachments: upload a reference doc, poll its ingestion state, delete it.
+// ---------------------------------------------------------------------------
+
+export type AttachmentStatus =
+  | "queued"
+  | "extracting"
+  | "building"
+  | "ready"
+  | "error"
+  | "cancelled";
+
+export interface AttachmentState {
+  id: string;
+  name: string;
+  status: AttachmentStatus;
+  error?: string;
+}
+
+// POST the file as multipart. Returns the created card (status "queued").
+// `signal` lets the caller abort the upload itself (cancel before it lands).
+export async function uploadAttachment(
+  file: File,
+  sessionId: string,
+  signal?: AbortSignal
+): Promise<AttachmentState> {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("sessionId", sessionId);
+
+  let res: Response;
+  try {
+    res = await fetch(ATTACH_URL, { method: "POST", body: form, signal });
+  } catch (e) {
+    if ((e as Error).name === "AbortError") throw e;
+    throw new Error(`Can't reach the backend at ${ATTACH_URL}. Is the server running?`);
+  }
+  if (!res.ok) {
+    let detail = await res.text();
+    try {
+      detail = (JSON.parse(detail) as { error?: string }).error || detail;
+    } catch {
+      /* keep raw text */
+    }
+    throw new Error(detail || `Upload failed (${res.status}).`);
+  }
+  return (await res.json()) as AttachmentState;
+}
+
+// Fetch the current ingestion state of one attachment.
+export async function getAttachment(id: string, signal?: AbortSignal): Promise<AttachmentState> {
+  const res = await fetch(`${ATTACH_URL}/${id}`, { signal });
+  if (!res.ok) throw new Error(`Attachment ${id} not found.`);
+  return (await res.json()) as AttachmentState;
+}
+
+// Remove an attachment server-side (also serves as "cancel" for an in-flight
+// ingestion: the pipeline bails when the entry disappears).
+export async function deleteAttachment(id: string): Promise<void> {
+  try {
+    await fetch(`${ATTACH_URL}/${id}`, { method: "DELETE" });
+  } catch {
+    /* best-effort; the card is removed from the UI regardless */
   }
 }

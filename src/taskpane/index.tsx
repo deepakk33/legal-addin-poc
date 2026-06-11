@@ -5,7 +5,7 @@ import { FluentProvider, webLightTheme } from "@fluentui/react-components";
 
 /* global document, Office, module, require, HTMLElement */
 
-const title = "Legal AI Redline";
+const title = "Silks AI";
 
 const rootElement: HTMLElement | null = document.getElementById("container");
 const root = rootElement ? createRoot(rootElement) : undefined;
