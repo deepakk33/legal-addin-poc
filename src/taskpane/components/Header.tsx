@@ -12,14 +12,16 @@ const useStyles = makeStyles({
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    paddingBottom: "30px",
-    paddingTop: "100px",
-    backgroundColor: tokens.colorNeutralBackground3,
+    paddingBottom: "20px",
+    paddingTop: "24px",
+    backgroundColor: "#f1edff", // brand-middle pastel
+    borderBottom: "3px solid #ff6201", // single orange brand accent
   },
   message: {
-    fontSize: tokens.fontSizeHero900,
-    fontWeight: tokens.fontWeightRegular,
-    fontColor: tokens.colorNeutralBackgroundStatic,
+    fontFamily: tokens.fontFamilyBase,
+    fontSize: tokens.fontSizeHero700,
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground1,
   },
 });
 

@@ -11,6 +11,7 @@ import {
   Radio,
   tokens,
   makeStyles,
+  mergeClasses,
 } from "@fluentui/react-components";
 import { DismissRegular, DocumentRegular, CheckmarkCircleRegular, ErrorCircleRegular } from "@fluentui/react-icons";
 import {
@@ -39,7 +40,11 @@ const useStyles = makeStyles({
   status: { color: tokens.colorNeutralForeground3 },
   error: { color: tokens.colorPaletteRedForeground1 },
   preview: { display: "flex", flexDirection: "column", gap: "8px" },
-  card: { padding: "10px" },
+  card: {
+    padding: "10px",
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderRadius: tokens.borderRadiusMedium,
+  },
   label: { fontWeight: tokens.fontWeightSemibold, marginBottom: "4px" },
   mono: { whiteSpace: "pre-wrap", fontSize: tokens.fontSizeBase200 },
   attachList: { display: "flex", flexDirection: "column", gap: "6px" },
@@ -51,6 +56,7 @@ const useStyles = makeStyles({
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     borderRadius: tokens.borderRadiusMedium,
   },
+  attachRowReady: { backgroundColor: "#d9f7e1" }, // positive-pastel tint when ingested
   attachName: { flexGrow: 1, fontSize: tokens.fontSizeBase200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   attachState: { fontSize: tokens.fontSizeBase100, color: tokens.colorNeutralForeground3 },
   ok: { color: tokens.colorPaletteGreenForeground1 },
@@ -216,7 +222,10 @@ const LegalEditor: React.FC = () => {
       <Field className={styles.field} label="Reference documents">
         <div className={styles.attachList}>
           {attachments.map((c) => (
-            <div key={c.localId} className={styles.attachRow}>
+            <div
+              key={c.localId}
+              className={mergeClasses(styles.attachRow, c.status === "ready" && styles.attachRowReady)}
+            >
               <DocumentRegular />
               <span className={styles.attachName} title={c.name}>
                 {c.name}
