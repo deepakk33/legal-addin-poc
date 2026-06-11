@@ -1,24 +1,21 @@
 [
   {
-    "name": "Format: draft new NDA in the sample's structure",
+    "name": "Follow the format",
     "referenceFile": "sample-nda.txt",
-    "referenceMode": "format",
-    "instruction": "Draft a mutual NDA between [PARTY A] and [PARTY B] following this structure.",
+    "instruction": "Draft a mutual NDA between [PARTY A] and [PARTY B] using the same format as the attached document.",
     "notes": "Should mirror headings/numbering, NOT reuse Acme/Globex/Delaware facts."
   },
   {
-    "name": "Exact: reframe with the user's data",
+    "name": "Reframe with my data",
     "referenceFile": "sample-nda.txt",
-    "referenceMode": "exact",
-    "instruction": "Draft this NDA for Initech Inc. and Hooli Inc., effective March 1, 2026, governed by California law, with a 3-year term.",
-    "notes": "Should follow the structure and fill the slots with the supplied data."
+    "instruction": "Using the attached as a template, draft this NDA for Initech Inc. and Hooli Inc., effective March 1, 2026, governed by California law, with a 3-year term.",
+    "notes": "Should follow the structure and fill in the supplied data."
   },
   {
-    "name": "Inspiration: tone-only guidance on an edit",
+    "name": "Take inspiration (tone) on an edit",
     "referenceFile": "sample-nda.txt",
-    "referenceMode": "inspiration",
-    "instruction": "Make this clause mutual.",
+    "instruction": "Make this clause mutual, taking tone inspiration from the attached.",
     "selectionText": "The Receiving Party shall not disclose Confidential Information to any third party.",
-    "notes": "Edit mode; reference used for tone only."
+    "notes": "Edit mode; reference used loosely for tone."
   }
 ]

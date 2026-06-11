@@ -128,40 +128,42 @@ exactly which model produced each edit.
 
 ## Use it end to end
 
-1. Open a `.docx` in Word. The **Silks AI** pane appears (Home tab → Show Taskpane, if not).
-2. **Select a clause** in the document.
-3. (Optional) click **Read selection** to confirm the pane sees your text.
-4. Type an **instruction** — e.g. *"make this mutual"*, *"tighten this"*, *"redline against plain-English standard"*.
-5. Click **Edit selection**. The backend calls the configured model; the edited text is written
-   back into the same range **as a tracked change** (redline).
-6. Resolve it with Word's normal **Review → Accept / Reject**.
-7. Every edit is recorded in the append-only audit log (`server/db/audit.db`).
+The pane is a **chat-style** interface: a transcript on top, a docked input at the bottom.
 
-With **no selection** the same flow drafts new text from your instruction and inserts it as a
-tracked change — useful in an empty document.
+1. Open a `.docx` in Word. The **Silks AI** pane appears (Home tab → Show Taskpane, if not).
+2. **Select a clause.** The input auto-reads the live selection and shows the target — a paragraph
+   range like *"Editing ¶ 13–15"* (Word exposes no line numbers; paragraphs are the closest
+   locator). With nothing selected it shows *"Drafting into <filename>"*.
+3. Type your instruction in the input and press **Enter** (or the **send** button) — e.g.
+   *"make this mutual"*, *"tighten this"*, *"redline against a plain-English standard"*.
+4. The configured model runs; the result appears in the transcript and is written into the document
+   **as a tracked change** (a redline for an edit, an insertion for a draft).
+5. Resolve it with Word's normal **Review → Accept / Reject**.
+6. Every edit is recorded in the append-only audit log (`server/db/audit.db`).
 
 ## Reference documents (grounded drafting)
 
 Attach a reference doc so Silks AI drafts/edits in *its* shape instead of from scratch.
 
-1. In the pane, **Add file** → pick one or more `.docx` / `.pdf` / `.txt` files.
-2. Each file becomes a **card** that walks its ingestion states — `Extracting text… → Building
-   grounding artifact… → Ready` — with its own spinner. The **✕** cancels an in-flight ingestion
-   or removes a finished one.
-3. Once at least one card is **Ready**, pick how to use it:
-   - **Format** — mirror the reference's structure (headings, clause order, numbering, conventions);
-     the reference's own facts are stripped, content comes from your instruction.
-   - **Inspiration** — use only the reference's tone/style as a loose guide.
-   - **Exact** — follow the structure and fill its labeled data slots with the data in your instruction;
-     unsupplied slots become bracketed placeholders.
-4. Type your instruction and **Edit / Draft** as usual. The grounding is injected into the prompt;
-   the result still lands as a tracked change.
+1. Click the **📎 attach** button (bottom-left of the input) → pick one or more
+   `.docx` / `.pdf` / `.txt` files.
+2. Each file shows as a **chip** in the input that walks its ingestion states
+   (`Extracting… → Reading… → Ready`) with a spinner. The chip's **✕** cancels an in-flight
+   ingestion or removes a finished one.
+3. **Just say what you want in your instruction** — there's no mode toggle. The system prompt
+   interprets natural phrasing, e.g.:
+   - *"Draft an NDA **using the same format as** the attached"* → mirrors structure, your content.
+   - *"**Take tone inspiration** from this and rewrite the clause"* → style guide only.
+   - *"**Reframe the attached** for Initech and Hooli, governed by California law"* → its structure,
+     filled with your data; bracketed placeholders for anything you didn't supply.
+4. Send as usual — the grounding is injected into the prompt and the result lands as a tracked change.
 
 How it works: on upload the backend extracts text (`mammoth` for `.docx`, `pdf-parse` for `.pdf`,
 with an **OCR fallback** only when a PDF's text layer is empty), then the model distills it into a
 compact JSON **grounding artifact** (headings, clause order, numbering scheme, formatting
-conventions, tone summary, data slots). Artifacts live in **server memory only** — no DB, no vector
-store, dropped on restart.
+conventions, tone summary, data slots). At edit time the artifact is projected into a `REFERENCE`
+block and the model follows your instruction's intent. Artifacts live in **server memory only** —
+no DB, no vector store, dropped on restart.
 
 ## Verify without Word
 
