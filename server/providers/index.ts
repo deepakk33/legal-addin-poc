@@ -25,3 +25,11 @@ export function selectProvider(): ModelProvider {
       );
   }
 }
+
+// Shared provider instance, reused by every route (edit + ingestion) so we
+// don't reconstruct an SDK client per request.
+let shared: ModelProvider | undefined;
+export function getProvider(): ModelProvider {
+  if (!shared) shared = selectProvider();
+  return shared;
+}

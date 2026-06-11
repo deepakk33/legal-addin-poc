@@ -1,20 +1,46 @@
 import { Router, Request, Response } from "express";
-import { selectProvider } from "../providers";
+import { getProvider } from "../providers";
+import { ReferenceContext } from "../providers/ModelProvider";
 import { recordEdit } from "../db/audit";
+import * as store from "../attachments/store";
+import { projectArtifact } from "../attachments/artifact";
 
 const router = Router();
-const provider = selectProvider();
+const provider = getProvider();
+
+type RefMode = ReferenceContext["mode"];
 
 interface EditBody {
   text?: string;
   instruction?: string;
   docName?: string;
   mode?: "edit" | "draft";
+  attachmentIds?: string[];
+  referenceMode?: RefMode;
 }
 
-// POST /api/edit  { text, instruction, docName?, mode? } -> { text: edited }
+function normalizeRefMode(m?: string): RefMode {
+  return m === "format" || m === "inspiration" || m === "exact" ? m : "format";
+}
+
+// Build a reference context from the selected, ready attachments by projecting
+// each grounding artifact per the chosen mode. Returns undefined if nothing
+// usable is selected.
+function buildReference(ids: string[] | undefined, mode: RefMode): ReferenceContext | undefined {
+  if (!ids?.length) return undefined;
+  const projections = ids
+    .map((id) => store.get(id))
+    .filter((a) => a?.status === "ready" && a.artifact)
+    .map((a) => projectArtifact(a!.artifact!, mode));
+  if (!projections.length) return undefined;
+  return { mode, projection: projections.join("\n\n---\n\n") };
+}
+
+// POST /api/edit  { text, instruction, docName?, mode?, attachmentIds?, referenceMode? }
+//   -> { text: edited }
 router.post("/edit", async (req: Request, res: Response) => {
-  const { text, instruction, docName, mode } = (req.body ?? {}) as EditBody;
+  const { text, instruction, docName, mode, attachmentIds, referenceMode } = (req.body ??
+    {}) as EditBody;
   const editMode = mode === "draft" ? "draft" : "edit";
 
   // Edit mode needs source text; draft mode authors from the instruction alone.
@@ -25,8 +51,15 @@ router.post("/edit", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "Missing 'instruction'." });
   }
 
+  const reference = buildReference(attachmentIds, normalizeRefMode(referenceMode));
+
   try {
-    const edited = await provider.edit({ text: text ?? "", instruction, mode: editMode });
+    const edited = await provider.edit({
+      text: text ?? "",
+      instruction,
+      mode: editMode,
+      reference,
+    });
 
     // Append-only audit row (status 'pending' until accept/reject is wired).
     recordEdit({

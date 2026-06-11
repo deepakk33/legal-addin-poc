@@ -1,0 +1,18 @@
+MUTUAL NON-DISCLOSURE AGREEMENT
+
+This Mutual Non-Disclosure Agreement (this "Agreement") is entered into as of January 1, 2025 (the "Effective Date") by and between Acme Corporation, a Delaware corporation ("Acme"), and Globex LLC, a New York limited liability company ("Globex"). Acme and Globex are each a "Party" and together the "Parties".
+
+1. Definitions.
+1.1 "Confidential Information" means any non-public information disclosed by one Party (the "Disclosing Party") to the other Party (the "Receiving Party"), whether orally, in writing, or by any other means.
+
+2. Obligations.
+2.1 The Receiving Party shall hold the Confidential Information in strict confidence and shall not disclose it to any third party without the prior written consent of the Disclosing Party.
+2.2 The Receiving Party shall use the Confidential Information solely for the purpose of evaluating a potential business relationship between the Parties.
+
+3. Term.
+3.1 This Agreement shall commence on the Effective Date and continue for a period of two (2) years.
+
+4. Governing Law.
+4.1 This Agreement shall be governed by the laws of the State of Delaware.
+
+IN WITNESS WHEREOF, the Parties have executed this Agreement as of the Effective Date.

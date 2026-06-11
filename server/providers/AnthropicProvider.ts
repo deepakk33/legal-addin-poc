@@ -25,10 +25,15 @@ export class AnthropicProvider implements ModelProvider {
     return MODEL;
   }
 
-  async edit({ text, instruction, mode = "edit" }: EditRequest): Promise<string> {
-    const { system, user } = buildPrompt(mode, text, instruction);
-    // Note: Opus 4.8 rejects temperature/top_p/budget_tokens. We omit them and
-    // rely on the system prompt's "return only the edited text" guardrail.
+  async edit({ text, instruction, mode = "edit", reference }: EditRequest): Promise<string> {
+    const { system, user } = buildPrompt(mode, text, instruction, reference);
+    return this.complete(system, user);
+  }
+
+  // Generic completion (also used for ingestion/distillation).
+  // Note: Opus 4.8 rejects temperature/top_p/budget_tokens. We omit them and
+  // rely on the system prompt's "return only the requested text" guardrail.
+  async complete(system: string, user: string): Promise<string> {
     const res = await this.client.messages.create({
       model: MODEL,
       max_tokens: MAX_TOKENS,
@@ -37,7 +42,7 @@ export class AnthropicProvider implements ModelProvider {
     });
 
     if (res.stop_reason === "refusal") {
-      throw new Error("Claude refused this edit for safety reasons.");
+      throw new Error("Claude refused this request for safety reasons.");
     }
 
     // content is a list of blocks; concatenate the text blocks.

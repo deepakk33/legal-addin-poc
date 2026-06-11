@@ -4,6 +4,7 @@ import cors from "cors";
 import * as https from "https";
 import devCerts from "office-addin-dev-certs";
 import editRouter from "./routes/edit";
+import attachmentsRouter from "./routes/attachments";
 import { dbPath } from "./db/audit";
 
 const PORT = Number(process.env.BACKEND_PORT ?? 3001);
@@ -17,6 +18,7 @@ async function main() {
 
   app.get("/health", (_req, res) => res.json({ ok: true }));
   app.use("/api", editRouter);
+  app.use("/api", attachmentsRouter);
 
   // Reuse the Office dev cert so the add-in (HTTPS) can call us without cert errors.
   const httpsOptions = await devCerts.getHttpsServerOptions();
@@ -32,7 +34,7 @@ async function main() {
             ? process.env.OPENAI_MODEL ?? "gpt-4o"
             : `${process.env.OLLAMA_MODEL ?? "llama3.1:8b"} @ ${process.env.OLLAMA_HOST ?? "http://localhost:11434"}`;
       // eslint-disable-next-line no-console
-      console.log(`Legal add-in backend on https://localhost:${PORT}`);
+      console.log(`Silks AI backend on https://localhost:${PORT}`);
       // eslint-disable-next-line no-console
       console.log(`  provider:   ${provider}`);
       // eslint-disable-next-line no-console

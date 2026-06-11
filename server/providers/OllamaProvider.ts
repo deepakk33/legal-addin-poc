@@ -14,8 +14,13 @@ export class OllamaProvider implements ModelProvider {
     return MODEL;
   }
 
-  async edit({ text, instruction, mode = "edit" }: EditRequest): Promise<string> {
-    const { system, user } = buildPrompt(mode, text, instruction);
+  async edit({ text, instruction, mode = "edit", reference }: EditRequest): Promise<string> {
+    const { system, user } = buildPrompt(mode, text, instruction, reference);
+    return this.complete(system, user);
+  }
+
+  // Generic completion (also used for ingestion/distillation).
+  async complete(system: string, user: string): Promise<string> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
